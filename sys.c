@@ -28,39 +28,71 @@ void reserve_space();
 
 //void cpu_graphics();
 //void line_up();
-void cpu_graphics(int sequential, char cpuArr[][200], int *default_num, float cur_cpuUsage, float *prev, int i) {
-    int diff_bar = 0;
-    char cpuStr[200] = "\0";
+void cpu_graphics(int sampleIndex, char cpuArr[][200], float curCpuUsage, int sequential) {
+    int baseBarCount = 3; // 기본 바 개수
+    int additionalBars = (int)curCpuUsage; // CPU 사용량에 따른 추가 바 개수
+
+    // CPU 사용 정보 문자열 초기화
+    char cpuUsageStr[200] = "         "; // 시작 공백
     if (i == 0) {
         *default_num = 3; // Assuming 3 as a default_num starting value for the number of bars
-        sprintf(cpuArr[i], "         |||%.2f", cur_cpuUsage);
-    } else {
-        diff_bar = (int)cur_cpuUsage - (int)(*prev);
-        *default_num += diff_bar;
-        strcpy(cpuArr[i], "         ");
-        for (int m = 0; m < *default_num; m++) {
-            strcat(cpuArr[i], "|");
-        }
-        sprintf(cpuStr, "%.2f", cur_cpuUsage);
-        strcat(cpuArr[i], cpuStr);
-    }
-
-    if(sequential) {
-        for (int j = 0; j <= i; j++) {
-            if (j == i)
-                printf("%s\n", cpuArr[j]);
-            else
-                printf("\n");
-        }
+        sprintf(cpuArr[i], "|||%.2f", cur_cpuUsage);
     } 
-    else {
-        for (int h = 0; h <= i; h++) {
-            printf("%s\n", cpuArr[h]);
-        }
+    for (int i = 0; i < baseBarCount + additionalBars; ++i) {
+        strcat(cpuUsageStr, "|");
     }
 
-    *prev = cur_cpuUsage;
+    char usagePercent[50];
+    sprintf(usagePercent, " %.2f%%", curCpuUsage);
+    strcat(cpuUsageStr, usagePercent);
+
+    strcpy(cpuArr[sampleIndex], cpuUsageStr);
+
+    // sequential 모드에 따라 출력 방식 조정
+    if(sequential) {
+        for (int j = 0; j <= sampleIndex; j++) {
+            printf("%s\n", cpuArr[j]);
+        }
+    } else {
+        printf("%s\n", cpuArr[sampleIndex]);
+    }
 }
+
+
+// void cpu_graphics(int sequential, char cpuArr[][200], int *default_num, float cur_cpuUsage, float *prev, int i) {
+//     int diff_bar = 0;
+//     char cpuStr[200] = "\0";
+//     if (i == 0) {
+//         *default_num = 3; // Assuming 3 as a default_num starting value for the number of bars
+//         sprintf(cpuArr[i], "         |||%.2f", cur_cpuUsage);
+//     } 
+//     else {
+//         diff_bar = (int)cur_cpuUsage - (int)(*prev);
+//         *default_num += diff_bar;
+//         strcpy(cpuArr[i], "         ");
+//         for (int m = 0; m < *default_num; m++) {
+//             strcat(cpuArr[i], "|");
+//         }
+//         sprintf(cpuStr, "%.2f", cur_cpuUsage);
+//         strcat(cpuArr[i], cpuStr);
+//     }
+
+//     if(sequential) {
+//         for (int j = 0; j <= i; j++) {
+//             if (j == i)
+//                 printf("%s\n", cpuArr[j]);
+//             else
+//                 printf("\n");
+//         }
+//     } 
+//     else {
+//         for (int h = 0; h <= i; h++) {
+//             printf("%s\n", cpuArr[h]);
+//         }
+//     }
+
+//     *prev = cur_cpuUsage;
+// }
 
 int main(int argc,char *argv[]){
     //  struct utmp utmp_user=malloc(sizeof(struct utmp));
@@ -359,44 +391,74 @@ void fcn_for_print_memArr(int sequential,int samples,char memArr[][1024],int i){
         
     }
 }
-void memory_graphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024],int i){
-    char graphicsArr[1024]="\0", diff_virtArr[1024]="\0";
-    double difference=0.00;
-    int j =0;
-    strcpy(graphicsArr," |");
-    if(i==0){
-        difference = 0.00;
+
+void memory_graphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024], int i) {
+    char graphicsStr[1024] = " |";
+    double change = virtual_used_gb - *prev_used_gb;
+    // 변화량을 백분율로 변환하고 반올림
+    int symbolsCount = round(fabs(change) * 100);
+
+    if (change >= 0.00 && change < 0.01) {
+        strcat(graphicsStr, "o ");
+    } else if (change < 0 && change > -0.01) {
+        strcat(graphicsStr, "@ ");
+    } else {
+        for (int k = 0; k < symbolsCount; ++k) {
+            strcat(graphicsStr, change < 0 ? ":" : "# ");
+        }
+        strcat(graphicsStr, change < 0 ? "@" : "* ");
     }
 
-    else{
-        difference = virtual_used_gb-*(prev_used_gb);
-    }
-    if(difference>=0.00 && difference <0.01){ //if difference>=0
-        strcat(graphicsArr,"o "); //usually, or always(assumeption) start w o.
-    }
-    else if(difference <0 && difference >-0.01){ //<0
-        strcat(graphicsArr,"@ ");
-        
-    }
-    else{
-        j = fabs((int)((difference-(int)difference+0.005)*100));
-        if(difference<0){
-            for(int v =0; v<j; v++){
-                strcat(graphicsArr,":");
-            }strcat(graphicsArr,"@");
+    char usageInfo[50];
+    sprintf(usageInfo, "%.2f (%.2f)", change, virtual_used_gb);
+    strcat(graphicsStr, usageInfo);
 
-        }
-        else{ //>=0
-            for(int k=0; k<j; k++){
-                strcat(graphicsArr,"# ");
-            }strcat(graphicsArr,"* " );
-        }
+    strcpy(memArr[i], graphicsStr);
+    *prev_used_gb = virtual_used_gb;
+
+    for (int j = 0; j <= i; ++j) {
+        printf("%s\n", memArr[j]);
     }
-    *(prev_used_gb)=virtual_used_gb;
-    sprintf(diff_virtArr,"%.2f (%.2f)",difference,virtual_used_gb);
-    strcat(graphicsArr,diff_virtArr);
-    strcat(memArr[i],graphicsArr);
 }
+
+// void memory_graphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024],int i){
+//     char graphicsArr[1024]="\0", diff_virtArr[1024]="\0";
+//     double difference=0.00;
+//     int j =0;
+//     strcpy(graphicsArr," |");
+//     if(i==0){
+//         difference = 0.00;
+//     }
+
+//     else{
+//         difference = virtual_used_gb-*(prev_used_gb);
+//     }
+//     if(difference>=0.00 && difference <0.01){ //if difference>=0
+//         strcat(graphicsArr,"o "); //usually, or always(assumeption) start w o.
+//     }
+//     else if(difference <0 && difference >-0.01){ //<0
+//         strcat(graphicsArr,"@ ");
+        
+//     }
+//     else{
+//         j = fabs((int)((difference-(int)difference+0.005)*100));
+//         if(difference<0){
+//             for(int v =0; v<j; v++){
+//                 strcat(graphicsArr,":");
+//             }strcat(graphicsArr,"@");
+
+//         }
+//         else{ //>=0
+//             for(int k=0; k<j; k++){
+//                 strcat(graphicsArr,"# ");
+//             }strcat(graphicsArr,"* " );
+//         }
+//     }
+//     *(prev_used_gb)=virtual_used_gb;
+//     sprintf(diff_virtArr,"%.2f (%.2f)",difference,virtual_used_gb);
+//     strcat(graphicsArr,diff_virtArr);
+//     strcat(memArr[i],graphicsArr);
+// }
 
 
 ///for total cpu useage, ask to TA tmmr.
