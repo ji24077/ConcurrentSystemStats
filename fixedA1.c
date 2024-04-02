@@ -28,71 +28,85 @@ void reserve_space();
 
 //void cpu_graphics();
 //void line_up();
-void cpu_graphics(int sampleIndex, char cpuArr[][200], float curCpuUsage, int sequential) {
-    int baseBarCount = 3; // 기본 바 개수
-    int additionalBars = (int)curCpuUsage; // CPU 사용량에 따른 추가 바 개수
+// void cpu_graphics(char cpuArr[][200], int i, int sequential, int *num_bar, float cur_cpu_usage, float *prev_cpu_usage){
+//     int diff_bar=0; //initialize a variable that records the difference in bars ("|") between iterations
+//     char cpuStr[200]="\0"; //initialize an empty string
 
-    // CPU 사용 정보 문자열 초기화
-    char cpuUsageStr[200] = "         "; // 시작 공백
-    if (i == 0) {
-        *default_num = 3; // Assuming 3 as a default_num starting value for the number of bars
-        sprintf(cpuArr[i], "|||%.2f", cur_cpuUsage);
-    } 
-    for (int i = 0; i < baseBarCount + additionalBars; ++i) {
-        strcat(cpuUsageStr, "|");
+//     if(i==0){
+//         sprintf(cpuArr[i], "         |||%.2f", cur_cpu_usage); //on first iteration, stores default of 3 bars followed by current cpu usage into first element of cpuArr
+//     } else {
+//         diff_bar = (int)cur_cpu_usage - (int)(*(prev_cpu_usage)); //otherwise, calculates the difference in CPU usage between prev and cur iterations (only looking at the integer part)
+//         *(num_bar) += diff_bar; //updates the current 'num_bar' value with the new difference in number of bars calculated above
+//         strcpy(cpuArr[i], "         "); //copies space into cpuArr at index i
+        
+//         for(int m=0; m<*(num_bar); m++) {
+//             strcat(cpuArr[i], "|"); //appends the number of bars represented by 'num_bar' and writes to cpuArr at index i
+//         }
+//         sprintf(cpuStr, "%.2f", cur_cpu_usage); //writes the current cpu usage upto 2 decimal places into cpuStr string
+//         strcat(cpuArr[i], cpuStr); //concatenates cpuStr into the already graphically formatted string of cpuArr at index i
+//     }
+
+//     if(sequential){ //checks if sequential is true (i.e. 1)
+//         for(int j=0; j<=i; j++){ //then iterate through the cpuArr upto the current iteration index i from main
+//             if(j==i) //if index j matches the current iteration index i from main
+//                 printf("%s\n", cpuArr[j]); //prints the current iteration of cpuArr at index j
+//             else
+//                 printf("\n"); //otherwise leave the rest blank (i.e. fill in the links with a new line)
+//         }
+//     } else { //if sequential is false
+//         for(int h=0; h<=i; h++){ //iterate through cpuArr upto the current iteration index i from main
+//             printf("%s\n", cpuArr[h]); //prints the entire cpuArr upto and including the current iteration
+//         }
+//     }
+
+//     *(prev_cpu_usage) = cur_cpu_usage; //sets the 'prev_cpu_usage' to 'cur_cpu_usage' for later iteration(s)
+// }
+void cpu_graphics(int sequential,char cpuArr[][200],int *default_num,float curCpuUsage, float *prevCpuUsage,int sampleIndex) {
+    int baseBarCount = 3; // 기본 바 개수는 3으로 고정
+    int additionalBars; // CPU 사용량에 따라 추가되는 바의 개수를 결정할 변수
+
+    // 첫 번째 샘플인 경우, default_num을 초기화하고 기본 바를 설정합니다.
+    if (sampleIndex == 0) {
+        *default_num = baseBarCount; // 기본 바 개수로 초기화
+        additionalBars = (int)curCpuUsage; // 현재 CPU 사용량에 따른 추가 바 개수 계산
+    } else {
+        // 이전 CPU 사용량과 현재 CPU 사용량의 차이를 계산하여 추가 바 개수를 결정합니다.
+        additionalBars = (int)curCpuUsage - (int)(*prevCpuUsage);
     }
 
+    // CPU 사용 정보를 담을 문자열을 초기화합니다.
+    char cpuUsageStr[200] = "         "; // 시작 공백을 포함하여 초기화
+    *default_num += additionalBars; // 추가 바 개수를 반영하여 전체 바 개수를 업데이트합니다.
+    for (int i = 0; i < *default_num; ++i) {
+        strcat(cpuUsageStr, "|"); // 각 바를 문자열에 추가합니다.
+    }
+
+    // CPU 사용량(%)을 문자열에 추가합니다.
     char usagePercent[50];
     sprintf(usagePercent, " %.2f%%", curCpuUsage);
     strcat(cpuUsageStr, usagePercent);
 
+    // 완성된 문자열을 cpuArr에 저장합니다.
     strcpy(cpuArr[sampleIndex], cpuUsageStr);
 
-    // sequential 모드에 따라 출력 방식 조정
-    if(sequential) {
+    // sequential 모드에 따라 출력 방식을 조정합니다.
+    if (sequential) {
+        // sequential 모드가 활성화된 경우, 지금까지의 모든 CPU 사용 정보를 순차적으로 출력합니다.
         for (int j = 0; j <= sampleIndex; j++) {
             printf("%s\n", cpuArr[j]);
         }
     } else {
-        printf("%s\n", cpuArr[sampleIndex]);
+        for(int k=0; k<=sampleIndex; k++){ //iterate through cpuArr upto the current iteration index i from main
+            printf("%s\n", cpuArr[k]); //prints the entire cpuArr upto and including the current iteration
+        }
     }
+
+    // 현재 CPU 사용량을 이전 사용량으로 업데이트합니다.
+    *prevCpuUsage = curCpuUsage;
 }
 
 
-// void cpu_graphics(int sequential, char cpuArr[][200], int *default_num, float cur_cpuUsage, float *prev, int i) {
-//     int diff_bar = 0;
-//     char cpuStr[200] = "\0";
-//     if (i == 0) {
-//         *default_num = 3; // Assuming 3 as a default_num starting value for the number of bars
-//         sprintf(cpuArr[i], "         |||%.2f", cur_cpuUsage);
-//     } 
-//     else {
-//         diff_bar = (int)cur_cpuUsage - (int)(*prev);
-//         *default_num += diff_bar;
-//         strcpy(cpuArr[i], "         ");
-//         for (int m = 0; m < *default_num; m++) {
-//             strcat(cpuArr[i], "|");
-//         }
-//         sprintf(cpuStr, "%.2f", cur_cpuUsage);
-//         strcat(cpuArr[i], cpuStr);
-//     }
 
-//     if(sequential) {
-//         for (int j = 0; j <= i; j++) {
-//             if (j == i)
-//                 printf("%s\n", cpuArr[j]);
-//             else
-//                 printf("\n");
-//         }
-//     } 
-//     else {
-//         for (int h = 0; h <= i; h++) {
-//             printf("%s\n", cpuArr[h]);
-//         }
-//     }
-
-//     *prev = cur_cpuUsage;
-// }
 
 int main(int argc,char *argv[]){
     //  struct utmp utmp_user=malloc(sizeof(struct utmp));
@@ -392,34 +406,48 @@ void fcn_for_print_memArr(int sequential,int samples,char memArr[][1024],int i){
     }
 }
 
+
 // void memory_graphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024], int i) {
-//     char graphicsStr[1024] = " |";
-//     double change = virtual_used_gb - *prev_used_gb;
-//     // 변화량을 백분율로 변환하고 반올림
-//     int symbolsCount = round(fabs(change) * 100);
-
-//     if (change >= 0.00 && change < 0.01) {
-//         strcat(graphicsStr, "o ");
-//     } else if (change < 0 && change > -0.01) {
-//         strcat(graphicsStr, "@ ");
+//     double difference = virtual_used_gb - *prev_used_gb;
+//     char graphicsStr[1024] = " ";
+//     char diff_virtArr[1024]="\0"; // Initialize with a space for proper formatting
+//     char infoStr[100]; // Buffer for the formatted information
+    
+//     // Base representation for the first sample or minimal change
+//     if (i == 0 || fabs(difference) < 0.01) {
+//         snprintf(graphicsStr, sizeof(graphicsStr), "|%s %.2f (%.2f)", difference >= 0 ? "o" : "@", difference, virtual_used_gb);
 //     } else {
-//         for (int k = 0; k < symbolsCount; ++k) {
-//             strcat(graphicsStr, change < 0 ? ":" : "# ");
+//         // Prepare graphics based on the magnitude and direction of change
+//         char changeSymbol = difference < 0 ? ':' : '#';
+//         int symbolsCount = fabs(difference) * 100; // Convert change to symbol count
+
+//         // Append the base bars
+//         strcat(graphicsStr, "|");
+//         // Append additional symbols based on change magnitude
+//         for (int j = 0; j < symbolsCount && j < (sizeof(graphicsStr) - strlen(graphicsStr) - 50); ++j) {
+//             strncat(graphicsStr, &changeSymbol, 1);
 //         }
-//         strcat(graphicsStr, change < 0 ? "@" : "* ");
+//         // Append closing symbol
+//         strcat(graphicsStr, difference < 0 ? "@" : "*");
+        
+//         // Append the formatted difference and usage
+//         snprintf(infoStr, sizeof(infoStr), " %.2f (%.2f)", difference, virtual_used_gb);
+//         strncat(graphicsStr, infoStr, sizeof(graphicsStr) - strlen(graphicsStr) - 1);
 //     }
 
-//     char usageInfo[50];
-//     sprintf(usageInfo, "%.2f (%.2f)", change, virtual_used_gb);
-//     strcat(graphicsStr, usageInfo);
+//     // Ensure not to exceed buffer limit
+//     strncpy(memArr[i], graphicsStr, 1023);
+//     memArr[i][1023] = '\0'; // Null-terminate to ensure string is properly closed
 
-//     strcpy(memArr[i], graphicsStr);
+//     // Update previous usage for next call
 //     *prev_used_gb = virtual_used_gb;
-
-//     for (int j = 0; j <= i; ++j) {
-//         printf("%s\n", memArr[j]);
-//     }
+//      sprintf(diff_virtArr,"%.2f (%.2f)",difference,virtual_used_gb);
+//     strcat(graphicsStr,diff_virtArr);
+//     strcat(memArr[i],graphicsStr);
 // }
+
+
+
 
 void memory_graphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024],int i){
     char graphicsArr[1024]="\0", diff_virtArr[1024]="\0";
