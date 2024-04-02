@@ -407,89 +407,46 @@ void fcn_for_print_memArr(int sequential,int samples,char memArr[][1024],int i){
 }
 
 
-// void memory_graphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024], int i) {
-//     double difference = virtual_used_gb - *prev_used_gb;
-//     char graphicsStr[1024] = " ";
-//     char diff_virtArr[1024]="\0"; // Initialize with a space for proper formatting
-//     char infoStr[100]; // Buffer for the formatted information
+void memory_graphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024], int i) {
+    double difference = virtual_used_gb - *prev_used_gb;
+    char graphicsStr[1024] = " ";
+    char diff_virtArr[1024]="\0"; // Initialize with a space for proper formatting
+    char infoStr[100]; // Buffer for the formatted information
     
-//     // Base representation for the first sample or minimal change
-//     if (i == 0 || fabs(difference) < 0.01) {
-//         snprintf(graphicsStr, sizeof(graphicsStr), "|%s %.2f (%.2f)", difference >= 0 ? "o" : "@", difference, virtual_used_gb);
-//     } else {
-//         // Prepare graphics based on the magnitude and direction of change
-//         char changeSymbol = difference < 0 ? ':' : '#';
-//         int symbolsCount = fabs(difference) * 100; // Convert change to symbol count
+    // Base representation for the first sample or minimal change
+    if (i == 0 || fabs(difference) < 0.01) {
+        snprintf(graphicsStr, sizeof(graphicsStr), "|%s %.2f (%.2f)", difference >= 0 ? "o" : "@", difference, virtual_used_gb);
+    } else {
+        // Prepare graphics based on the magnitude and direction of change
+        char changeSymbol = difference < 0 ? ':' : '#';
+        int symbolsCount = fabs(difference) * 100; // Convert change to symbol count
 
-//         // Append the base bars
-//         strcat(graphicsStr, "|");
-//         // Append additional symbols based on change magnitude
-//         for (int j = 0; j < symbolsCount && j < (sizeof(graphicsStr) - strlen(graphicsStr) - 50); ++j) {
-//             strncat(graphicsStr, &changeSymbol, 1);
-//         }
-//         // Append closing symbol
-//         strcat(graphicsStr, difference < 0 ? "@" : "*");
-        
-//         // Append the formatted difference and usage
-//         snprintf(infoStr, sizeof(infoStr), " %.2f (%.2f)", difference, virtual_used_gb);
-//         strncat(graphicsStr, infoStr, sizeof(graphicsStr) - strlen(graphicsStr) - 1);
-//     }
-
-//     // Ensure not to exceed buffer limit
-//     strncpy(memArr[i], graphicsStr, 1023);
-//     memArr[i][1023] = '\0'; // Null-terminate to ensure string is properly closed
-
-//     // Update previous usage for next call
-//     *prev_used_gb = virtual_used_gb;
-//      sprintf(diff_virtArr,"%.2f (%.2f)",difference,virtual_used_gb);
-//     strcat(graphicsStr,diff_virtArr);
-//     strcat(memArr[i],graphicsStr);
-// }
-
-
-
-
-void memory_graphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024],int i){
-    char graphicsArr[1024]="\0", diff_virtArr[1024]="\0";
-    double difference=0.00;
-    int j =0;
-    strcpy(graphicsArr," |");
-    if(i==0){
-        difference = 0.00;
-    }
-
-    else{
-        difference = virtual_used_gb-*(prev_used_gb);
-    }
-    if(difference>=0.00 && difference <0.01){ //if difference>=0
-        strcat(graphicsArr,"o "); //usually, or always(assumeption) start w o.
-    }
-    else if(difference <0 && difference >-0.01){ //<0
-        strcat(graphicsArr,"@ ");
-        
-    }
-    else{
-        j = fabs((int)((difference-(int)difference+0.005)*100));
-        if(difference<0){
-            for(int v =0; v<j; v++){
-                strcat(graphicsArr,":");
-            }strcat(graphicsArr,"@");
-
+        // Append the base bars
+        strcat(graphicsStr, "|");
+        // Append additional symbols based on change magnitude
+        for (int j = 0; j < symbolsCount && j < (sizeof(graphicsStr) - strlen(graphicsStr) - 50); ++j) {
+            strncat(graphicsStr, &changeSymbol, 1);
         }
-        else{ //>=0
-            for(int k=0; k<j; k++){
-                strcat(graphicsArr,"# ");
-            }strcat(graphicsArr,"* " );
-        }
+        // Append closing symbol
+        strcat(graphicsStr, difference < 0 ? "@" : "*");
+        
+        // Append the formatted difference and usage
+        snprintf(infoStr, sizeof(infoStr), " %.2f (%.2f)", difference, virtual_used_gb); //this part seems wrong
+        strncat(graphicsStr, infoStr, sizeof(graphicsStr) - strlen(graphicsStr) - 1);
     }
-    *(prev_used_gb)=virtual_used_gb;
-    sprintf(diff_virtArr,"%.2f (%.2f)",difference,virtual_used_gb);
-    strcat(graphicsArr,diff_virtArr);
-    strcat(memArr[i],graphicsArr);
+
+    // Ensure not to exceed buffer limit
+    strcat(memArr[i], graphicsStr);
+    memArr[i][1023] = '\0'; // Null-terminate to ensure string is properly closed
+
+    // Update previous usage for next call
+    *prev_used_gb = virtual_used_gb;
+     
 }
 
 
-///for total cpu useage, ask to TA tmmr.
+
+
 
 
 int display_Third_Info(){
