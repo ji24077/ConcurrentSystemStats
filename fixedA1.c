@@ -11,31 +11,31 @@
 
 
 
-void display_Top_Info();
-void store_memArr();
-int display_Third_Info();
-void display_Last_Info();
-void display_cores();
+void printTopInfo();
+void storeMemArr();
+int printUserInfoThird();
+void printSystemInfoLast();
+void printCores();
 void display_time_Last_Info();
-double calculate_virtual_used_gb();
-double calculate_cpu_usage();
-void store_cpuArr();
-void fcn_for_print_memArr();
+double calculateVirtUsed();
+double calculateCpuUsage();
+void storeCpuArr();
+void fcnForPrintMemoryArr();
 void store_newline_memArr();
 void reserve_space();
-void memory_graphics();
+void memoryGraphics();
 void reserve_space();
 
-//void cpu_graphics();
+//void setCpuGraphics();
 //void line_up();
-// void cpu_graphics(char cpuArr[][200], int i, int sequential, int *num_bar, float cur_cpu_usage, float *prev_cpu_usage){
+// void setCpuGraphics(char cpuArr[][200], int i, int sequential, int *num_bar, float cur_cpu_usage, float *prevCpuUsage_usage){
 //     int diff_bar=0; //initialize a variable that records the difference in bars ("|") between iterations
 //     char cpuStr[200]="\0"; //initialize an empty string
 
 //     if(i==0){
 //         sprintf(cpuArr[i], "         |||%.2f", cur_cpu_usage); //on first iteration, stores default of 3 bars followed by current cpu usage into first element of cpuArr
 //     } else {
-//         diff_bar = (int)cur_cpu_usage - (int)(*(prev_cpu_usage)); //otherwise, calculates the difference in CPU usage between prev and cur iterations (only looking at the integer part)
+//         diff_bar = (int)cur_cpu_usage - (int)(*(prevCpuUsage_usage)); //otherwise, calculates the difference in CPU usage between prev and cur iterations (only looking at the integer part)
 //         *(num_bar) += diff_bar; //updates the current 'num_bar' value with the new difference in number of bars calculated above
 //         strcpy(cpuArr[i], "         "); //copies space into cpuArr at index i
         
@@ -59,9 +59,9 @@ void reserve_space();
 //         }
 //     }
 
-//     *(prev_cpu_usage) = cur_cpu_usage; //sets the 'prev_cpu_usage' to 'cur_cpu_usage' for later iteration(s)
+//     *(prevCpuUsage_usage) = cur_cpu_usage; //sets the 'prevCpuUsage_usage' to 'cur_cpu_usage' for later iteration(s)
 // }
-void cpu_graphics(int sequential,char cpuArr[][200],int *default_num,float curCpuUsage, float *prevCpuUsage,int sampleIndex) {
+void setCpuGraphics(int sequential,char cpuArr[][200],int *default_num,float curCpuUsage, float *prevCpuUsage,int sampleIndex) {
     int baseBarCount = 3; // 기본 바 개수는 3으로 고정
     int additionalBars; // CPU 사용량에 따라 추가되는 바의 개수를 결정할 변수
 
@@ -162,11 +162,11 @@ int main(int argc,char *argv[]){
                 break;
         }
     }
-    unsigned long prev_cpu[7];
-    unsigned long curr_cpu[7];
+    unsigned long prevCpuUsage[7];
+    unsigned long currCpuUsage[7];
     double virtual_used_gb=0.0;
     double  prev_used_gb=0.0;
-    float cur_cpuUsage=0.00,prev_cpuUsage = 0.00;
+    float cur_cpuUsage=0.00,prevCpuUsageUsage = 0.00;
     char memArr[samples][1024];
     char cpuArr[samples][200];
     
@@ -178,11 +178,11 @@ int main(int argc,char *argv[]){
     // // char cpu_arr[samples][200];
     // if(user && !system &&!sequential)
     // {
-    //     display_Top_Info(samples,tdelay,sequential,i);
+    //     printTopInfo(samples,tdelay,sequential,i);
     //     printf("-------------------------\n");
-    //     display_Third_Info();
+    //     printUserInfoThird();
     //     printf("-------------------------\n");
-    //     display_Last_Info();
+    //     printSystemInfoLast();
     //     printf("-------------------------\n");
     //     exit(1);   
 
@@ -192,72 +192,72 @@ int main(int argc,char *argv[]){
         
     if(sequential){   //--seuential and/or --user --system etc.. 
         for (i = 0; i < samples; i++) { 
-            store_cpuArr(prev_cpu); 
+            storeCpuArr(prevCpuUsage); 
             sleep(tdelay); 
-            display_Top_Info(sequential, samples, tdelay,i); 
+            printTopInfo(sequential, samples, tdelay,i); 
             if(!user || (user && system)){ 
                 printf("---------------------------------------\n");
-                store_memArr(memArr,i); 
-                virtual_used_gb = calculate_virtual_used_gb();
+                storeMemArr(memArr,i); 
+                virtual_used_gb = calculateVirtUsed();
                 if(graphics) 
-                    memory_graphics(virtual_used_gb,&prev_used_gb,memArr,i); 
+                    memoryGraphics(virtual_used_gb,&prev_used_gb,memArr,i); 
                 
-                fcn_for_print_memArr(sequential,samples,memArr,i); 
+                fcnForPrintMemoryArr(sequential,samples,memArr,i); 
                 if((user && system)||!system){ 
                     printf("---------------------------------------\n");
-                    display_Third_Info(); 
+                    printUserInfoThird(); 
                     printf("---------------------------------------\n");
                 }
 
-                display_cores();
+                printCores();
                 
-                store_cpuArr(curr_cpu); 
+                storeCpuArr(currCpuUsage); 
 
-                cur_cpuUsage = calculate_cpu_usage(prev_cpu, curr_cpu); 
+                cur_cpuUsage = calculateCpuUsage(prevCpuUsage, currCpuUsage); 
                 printf(" total cpu use: %.2f%%\n", cur_cpuUsage); 
 
                 if(graphics)
-                    cpu_graphics(sequential,cpuArr,&default_num,cur_cpuUsage,&prev_cpuUsage,i); 
+                    setCpuGraphics(sequential,cpuArr,&default_num,cur_cpuUsage,&prevCpuUsageUsage,i); 
             }else{ 
                 printf("---------------------------------------\n");
-                display_Third_Info();
+                printUserInfoThird();
                 printf("---------------------------------------\n");
             }
             }
         }
         else{
             for( i = 0; i < samples; i++) {
-                store_cpuArr(prev_cpu);
+                storeCpuArr(prevCpuUsage);
                 sleep(tdelay);
-                display_Top_Info(samples, tdelay,sequential,i);
+                printTopInfo(samples, tdelay,sequential,i);
                 if((system &&  !user) &&!(sequential &&system)){ // no user in arg then we have to care about space of printing. 
                 //--system. and/or --graphics, but no user. yet and/or --sequential.
-                    store_memArr(memArr,i);
+                    storeMemArr(memArr,i);
                     //printf("no stop");
                     //printf("should not running here");
-                    virtual_used_gb = calculate_virtual_used_gb();
+                    virtual_used_gb = calculateVirtUsed();
                     if(graphics){
-                        memory_graphics(virtual_used_gb,&prev_used_gb,memArr,i);
+                        memoryGraphics(virtual_used_gb,&prev_used_gb,memArr,i);
                     }
-                    //fcn_for_print_memArr(sequential,samples,memArr,i);
+                    //fcnForPrintMemoryArr(sequential,samples,memArr,i);
                     printf("------------------------------------------------\n");  
                     reserve_space(samples);
                     printf("----------------------------------------------------\n"); 
-                    display_cores();
-                    store_cpuArr(curr_cpu);
-                    cur_cpuUsage = calculate_cpu_usage(prev_cpu,curr_cpu);
+                    printCores();
+                    storeCpuArr(currCpuUsage);
+                    cur_cpuUsage = calculateCpuUsage(prevCpuUsage,currCpuUsage);
                     printf("total cpu use:%.2f%%\n",cur_cpuUsage );
                     
 
                     for (int j=0;j<samples+4;j++){
                         printf("\033[1A"); //move cursor up one line.
                     } 
-                    fcn_for_print_memArr(sequential,samples,memArr,i);
+                    fcnForPrintMemoryArr(sequential,samples,memArr,i);
                     
                     if(graphics && system){
 
                         printf("\033[%d;1H", CPU_GRAPH_START_LINE=18);
-                        cpu_graphics(sequential,cpuArr,&default_num,cur_cpuUsage,&prev_cpuUsage,i); //if graphics option is given, display cpu graphics
+                        setCpuGraphics(sequential,cpuArr,&default_num,cur_cpuUsage,&prevCpuUsageUsage,i); //if graphics option is given, display cpu graphics
                         
                     
                     }else{
@@ -268,32 +268,32 @@ int main(int argc,char *argv[]){
 
                     }
                     else if((user &&system)||!(user && system)&& !sequential){ //display w --user --system and/or --graphics, and/or sequential.
-                        store_memArr(memArr,i);
+                        storeMemArr(memArr,i);
                         //printf("runnign here\n");
-                        virtual_used_gb = calculate_virtual_used_gb();
+                        virtual_used_gb = calculateVirtUsed();
                         if(graphics){
-                            memory_graphics(virtual_used_gb,&prev_used_gb,memArr,i);
+                            memoryGraphics(virtual_used_gb,&prev_used_gb,memArr,i);
                         }
-                        //fcn_for_print_memArr(sequential,samples,memArr,i);
+                        //fcnForPrintMemoryArr(sequential,samples,memArr,i);
                         printf("------------------------------------------------\n");  
                         reserve_space(samples);
                         printf("----------------------------------------------------\n"); 
                         //printf("running here");
-                        userLine_count= display_Third_Info();
+                        userLine_count= printUserInfoThird();
                         printf("---------------------------------------\n");
-                        display_cores();
-                        store_cpuArr(curr_cpu);
-                        cur_cpuUsage= calculate_cpu_usage(prev_cpu,curr_cpu);
+                        printCores();
+                        storeCpuArr(currCpuUsage);
+                        cur_cpuUsage= calculateCpuUsage(prevCpuUsage,currCpuUsage);
                         printf("total cpu use:%.2f%%\n",cur_cpuUsage );
 
                         printf("\033[%d;1H", MEM_GRAPH_START_LINE=3); //,may chage after .
-                        fcn_for_print_memArr(sequential,samples,memArr,i);
+                        fcnForPrintMemoryArr(sequential,samples,memArr,i);
                         if(graphics){
                             CPU_GRAPH_START_LINE = userLine_count+20;
                             
                             //printf("userline is:%d\n",userLine_count);
                             printf("\033[%d;1H", CPU_GRAPH_START_LINE); //maybe
-                            cpu_graphics(sequential,cpuArr,&default_num,cur_cpuUsage,&prev_cpuUsage,i);
+                            setCpuGraphics(sequential,cpuArr,&default_num,cur_cpuUsage,&prevCpuUsageUsage,i);
                         }else{
                             for(int j=0; j<userLine_count+6; j++){
                                 printf("\033[1B");
@@ -306,7 +306,7 @@ int main(int argc,char *argv[]){
     }
 
     printf("------------------------------------\n");
-    display_Last_Info();
+    printSystemInfoLast();
     printf("----------------------------------\n");
     return 0;
     
@@ -321,7 +321,7 @@ void reserve_space(int samples){
         printf("\n");
     }
 }
-double calculate_virtual_used_gb(){
+double calculateVirtUsed(){
     struct sysinfo sys_info;
 
     sysinfo(&sys_info); //get the information of system.(such as memory usage)
@@ -338,7 +338,7 @@ double calculate_virtual_used_gb(){
 
 
    
-void display_Top_Info(int samples, int tdelay,int sequential,int i) 
+void printTopInfo(int samples, int tdelay,int sequential,int i) 
 {
     /*Print the Nbr of samples: 10 --  every 1 secs.
      and Memory usage:4092 kilobytes. this is just a example of Top info.
@@ -363,9 +363,10 @@ void display_Top_Info(int samples, int tdelay,int sequential,int i)
     printf("fail to get Resource usage info");
    }
 }
-void store_memArr(char arr[][1024],int i){
+void storeMemArr(char arr[][1024],int i){
     /*display/print Memo*/
     //아마도 array에 저장해 sequentially 다룰 필요.
+    //second information.
     struct sysinfo sys_info;
 
     sysinfo(&sys_info); //get the information of system.(such as memory usage)
@@ -384,7 +385,7 @@ void store_memArr(char arr[][1024],int i){
 }
 
 
-void fcn_for_print_memArr(int sequential,int samples,char memArr[][1024],int i){
+void fcnForPrintMemoryArr(int sequential,int samples,char memArr[][1024],int i){
     printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
     if(sequential){
         for(int k=0; k<samples; k++){
@@ -407,9 +408,9 @@ void fcn_for_print_memArr(int sequential,int samples,char memArr[][1024],int i){
 }
 
 
-void memory_graphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024], int i) {
+void memoryGraphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024], int i) {
     double difference = virtual_used_gb - *prev_used_gb;
-    char graphicsStr[1024] = " ";
+    char graphicsStr[1024] = "\0 ";
     char diff_virtArr[1024]="\0"; // Initialize with a space for proper formatting
     char infoStr[100]; // Buffer for the formatted information
     
@@ -449,7 +450,7 @@ void memory_graphics(double virtual_used_gb, double *prev_used_gb, char memArr[]
 
 
 
-int display_Third_Info(){
+int printUserInfoThird(){
     
     /*recall:ut_user:user login name.
     ut_line:device name(console)
@@ -479,13 +480,14 @@ int display_Third_Info(){
 }
     
 
-void display_cores(){
+void printCores(){
+    //fourth information.
     int num_cpu = sysconf(_SC_NPROCESSORS_ONLN); //sysconf returns the number of processors in <unistd.h>
     printf("Number of cores: %d\n",num_cpu);
      //print num_cores
 }
-///for total cpu useage, ask to TA tmmr.
-void store_cpuArr(unsigned long curr_cpu[7]) {
+void storeCpuArr(unsigned long currCpuUsage[7]) {
+    //fifth information, print with fourth information.
     FILE *fp = fopen("/proc/stat", "r");
 
     if (!fp) {
@@ -495,7 +497,7 @@ void store_cpuArr(unsigned long curr_cpu[7]) {
 
     
     if (fscanf(fp, "cpu %lu %lu %lu %lu %lu %lu %lu", 
-    &curr_cpu[0], &curr_cpu[1], &curr_cpu[2], &curr_cpu[3], &curr_cpu[4], &curr_cpu[5], &curr_cpu[6]) != 7){ 
+    &currCpuUsage[0], &currCpuUsage[1], &currCpuUsage[2], &currCpuUsage[3], &currCpuUsage[4], &currCpuUsage[5], &currCpuUsage[6]) != 7){ 
         fprintf(stderr, "Error reat.ding CPU values\n");
         fclose(fp);
         exit(EXIT_FAILURE);
@@ -504,15 +506,15 @@ void store_cpuArr(unsigned long curr_cpu[7]) {
     fclose(fp); //mendatory
 }
 
-double calculate_cpu_usage(unsigned long prev_cpu[7], unsigned long curr_cpu[7]) {
-    unsigned long idle_prev = prev_cpu[3] + prev_cpu[4]; // idle_prev = idle+iowait. i wrote clearly on notion.
-    unsigned long idle_cur = curr_cpu[3] + curr_cpu[4]; //similarly,
+double calculateCpuUsage(unsigned long prevCpuUsage[7], unsigned long currCpuUsage[7]) {
+    unsigned long idle_prev = prevCpuUsage[3] + prevCpuUsage[4]; // idle_prev = idle+iowait. i wrote clearly on notion.
+    unsigned long idle_cur = currCpuUsage[3] + currCpuUsage[4]; //similarly,
 
     unsigned long total_prev = 0;
     unsigned long total_cur = 0;
     for (int i = 0; i < 7; ++i) {
-        total_prev += prev_cpu[i];
-        total_cur += curr_cpu[i];
+        total_prev += prevCpuUsage[i];
+        total_cur += currCpuUsage[i];
     }
 
     double total_diff = (double)(total_cur - total_prev);
@@ -521,7 +523,7 @@ double calculate_cpu_usage(unsigned long prev_cpu[7], unsigned long curr_cpu[7])
     return (total_diff - idle_diff) / total_diff * 100.0; // for persentage converted.// from the internet. need confirm.
 }
 
-void display_Last_Info(){
+void printSystemInfoLast(){
     struct utsname sysinfo;
     FILE *uptime_file;
     double uptime_secs;

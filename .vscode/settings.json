@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "wait.h": "c",
+        "resource.h": "c",
+        "utmpx.h": "c",
+        "types.h": "c",
+        "getopt.h": "c",
+        "signal.h": "c"
+    }
+}
