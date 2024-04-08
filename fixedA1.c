@@ -239,7 +239,7 @@ int main(int argc,char *argv[]){
                     if(graphics){
                         memoryGraphics(virtual_used_gb,&prev_used_gb,memArr,i);
                     }
-                    //fcnForPrintMemoryArr(sequential,samples,memArr,i);
+                    fcnForPrintMemoryArr(sequential,samples,memArr,i);
                     printf("------------------------------------------------\n");  
                     reserve_space(samples);
                     printf("----------------------------------------------------\n"); 
