@@ -1,381 +1,431 @@
+#define _POSIX_C_SOURCE 200809L
 #include "stats_functions.h"
+#include <signal.h>
 
-void GetInfoTop(int samples, int tdelay,int sequential,int i) 
-{
-    /*Print the Nbr of samples: 10 --  every 1 secs.
-     and Memory usage:4092 kilobytes. this is just a example of Top info.
-    */
-    
-    //printf("go to GEtinfotop");
-    //for memory usage:
-    struct rusage usage_info; // from <sys/resource.h>, to use mAgetrusage();
-    
-    int result = getrusage(RUSAGE_SELF,&usage_info);
-    if(sequential){
-        printf(">>> iteration %d\n",i);
-    }
-    else{
-        printf("\033[H\033[2J");
-        printf("Nbr of samples: %d-- every %d secs\n", samples,tdelay);
-    }
-    if(result ==0){
-        printf("Memory usage: %ld kilobytes\n", usage_info.ru_maxrss);
-    }
-   else{
-    printf("fail to get Resource usage info");
-   }
+
+
+pid_t memPID, userPID, cpuPID; // 전역 변수로 선언
+
+void handle_ctrlZ() {
+ struct sigaction action;
+ memset(&action, 0, sizeof(action));
+ action.sa_handler = SIG_IGN; // Ignore SIGTSTP (Ctrl-Z)
+
+ // Register signal handler for SIGTSTP (Ctrl-Z)
+ if (sigaction(SIGTSTP, &action, NULL) == -1) {
+ perror("Unable to set up signal handler for SIGTSTP");
+ exit(1);
+ }}
+void childProcessFunction() {
+    // SIGINT 신호 무시
+    signal(SIGINT, SIG_IGN);
+
+    // 자식 프로세스의 나머지 작업 수행
 }
+void signal_handler(int signal) {
+    char userInput[10];
 
+    if (signal == SIGINT) {
+        printf("\nCtrl-C detected: terminate? (press 'y' or 'yes', 'n' or 'no' to continue) ");
 
-void storeMemArr(int samples,int memFD[2],int tdelay){//memFD[1]
-    /*display/print Memo*/
-    //아마도 array에 저장해 sequentially 다룰 필요.
-    //second information.
-    char memArr[samples][1024];
-    struct sysinfo sys_info;
-    for(int i=0; i<samples;i++){
-            //struct sysinfo sys_info;
+        scanf(" %9s", userInput); // 사용자 입력 받음
 
-        sysinfo(&sys_info); //get the information of system.(such as memory usage)
-        double phys_total_gb = (float)sys_info.totalram/1024/1024/1024; 
-        double phys_free_gb = (float)sys_info.freeram/1024/1024/1024;
-        double phys_used_gb = (float)phys_total_gb-phys_free_gb;
-        double swap_total_gb = (float)sys_info.totalswap/1024/1024/1024;
-        double swap_free_gb = (float)sys_info.freeswap/1024/1024/1024;
-
-        double virtual_used_gb = phys_used_gb+(swap_total_gb-swap_free_gb);
-        double virtual_total_gb =(phys_total_gb+swap_total_gb);
-        sprintf(memArr[i],"%.2f GB / %.2f GB  -- %.2f GB / %.2f GB",
-        phys_used_gb,phys_total_gb,virtual_used_gb,virtual_total_gb);
-        ssize_t bytes_written = write(memFD[1], &memArr[i], sizeof(memArr[i]));
-
-        sleep(tdelay);
-        // sleep(tdelays);
-        //if i write it here, then when i read it is it also tdleay of speed to read it\?
-
-        
-    }
-    // for (int i = 0; i < samples; i++) {
+        // 프로그램 종료를 원할 경우
+        if (strcmp(userInput, "y") == 0 || strcmp(userInput, "Y") == 0 || 
+            strcmp(userInput, "yes") == 0 || strcmp(userInput, "YES") == 0) {
             
-        
-    //     //ssize_t bytes_written = write(memFD[1], &memArr[i], sizeof(memArr[i]));
-    //     ssize_t bytes_written = write(memFD[1], &memArr[i], sizeof(memArr[i]));
+            kill(memPID, SIGTERM);
+            kill(userPID, SIGTERM);
+            kill(cpuPID, SIGTERM);
 
-    // if (bytes_written == -1) {
-    //     perror("Failed to write memory info to pipe");
-    // }
-    // }
-}
+            waitpid(memPID, NULL, 0);
+            waitpid(userPID, NULL, 0);
+            waitpid(cpuPID, NULL, 0);
 
-void fcnForPrintMemoryArr(int sequential,int samples,char memArr[][1024],int i,int memFD[2]){//fd[0]
-    //printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
-
-   // char buffer[1024];
-   // while(read(memFD[0],memArr[i], sizeof(memArr[i])) > 0) {
-       // printf("메모리 사용량: %s\n", buffer);
-        // if (i == 0) {
-        // //printf("i is for fcnprint: %d\n",i);
-        //   printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
+            exit(EXIT_SUCCESS); // 프로그램 종료
+        }
+        // 프로그램 계속 진행을 원할 경우
+        // else if (strcmp(userInput, "n") == 0 || strcmp(userInput, "N") == 0 || 
+        //          strcmp(userInput, "no") == 0 || strcmp(userInput, "NO") == 0) {
+        //     //signal(SIGINT,signal_handler);
+        //     return;
         // }
-        if(sequential){
-            for(int k=0; k<samples; k++){
-                //ssize_t bytes_read = read(memFD,&memArr[k],1024); //may do this on main.
-                if(k==i){
-                    
-                    printf("%s\n",memArr[k]);
-                    //sleep(tdelay);
-                    
-                }
-                else{
-                    printf("\n");
-                }
-            }
-        }
-        else{
-            
-            for(int j=0; j<=i; j++){
-
-                printf("%s\n",memArr[j]);
-                //sleep(tdelay);
-            }
+        else {
+            // 'y', 'Y', 'yes', 'YES', 'n', 'N', 'no', 'NO' 외의 입력을 받았을 경우
+            printf("continuing...\n");
             
         }
-    //}
+    }
 }
 
 
-void memoryGraphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024], int i) {
-    double difference = virtual_used_gb - *prev_used_gb;
-    char graphicsStr[1024] = "\0 ";
-    char diff_virtArr[1024]="\0"; // Initialize with a space for proper formatting
-    char infoStr[100]; // Buffer for the formatted information
-    // Base representation for the first sample or minimal change
-    if (i == 0 || fabs(difference) < 0.01) {
-        snprintf(graphicsStr, sizeof(graphicsStr), "|%s %.2f (%.2f)", difference >= 0 ? "o" : "@", difference, virtual_used_gb);
-    } else {
-        // Prepare graphics based on the magnitude and direction of change
-        char changeSymbol = difference < 0 ? ':' : '#';
-        int symbolsCount = fabs(difference) * 100; // Convert change to symbol count
 
-        // Append the base bars
-        strcat(graphicsStr, "|");
-        // Append additional symbols based on change magnitude
-        for (int j = 0; j < symbolsCount && j < (sizeof(graphicsStr) - strlen(graphicsStr) - 50); ++j) {
-            strncat(graphicsStr, &changeSymbol, 1);
+int main(int argc,char *argv[]){
+    //  struct utmp utmp_user=malloc(sizeof(struct utmp));
+    //  free(utmp_user);
+    // signal(SIGSTOP,signal_handler);
+    // signal(SIGTSTP, signal_handler);
+    handle_ctrlZ();
+    //signal(SIGINT,signal_handler);
+    int samples = 10,tdelay = 1;
+    int user=0,system=0,sequential=0,graphics=0;
+    struct option long_options[] = {
+        {"system", no_argument, 0, 's'}, 
+        {"user", no_argument, 0, 'u'}, 
+        {"graphics", no_argument, 0, 'g'},        
+        {"sequential", no_argument, 0, 'a'}, 
+        {"samples", optional_argument, 0, 'b'}, // both samples and tdelay may change after. so we use optinal_argument. 
+        {"tdelay", optional_argument, 0, 'c'},
+        {0,0,0,0}
+    };
+    int opt;
+    while ((opt = getopt_long(argc, argv, "sugab::c::", long_options, NULL)) != -1){
+        //so samples or -a maybe has arg or not so we use :: to tell.
+        switch (opt) {
+            case 's':
+                system =1;
+                
+                break;
+            case 'u':
+                user = 1;
+                                
+
+                break;
+            case 'g':
+                graphics =1;
+                                
+
+                break;
+            case 'a':
+                sequential = 1;
+                            
+                break;
+            case 'b':
+                if(optarg)samples = atoi(optarg); //so this line will store /update the value of samples.
+            case 'c':
+                if(optarg)tdelay = atoi(optarg);
         }
-        // Append closing symbol
-        strcat(graphicsStr, difference < 0 ? "@" : "*");
-        
-        // Append the formatted difference and usage
-        snprintf(infoStr, sizeof(infoStr), " %.2f (%.2f)", difference, virtual_used_gb); //this part seems wrong
-        strncat(graphicsStr, infoStr, sizeof(graphicsStr) - strlen(graphicsStr) - 1);
     }
 
-    // Ensure not to exceed buffer limit
-    strcat(memArr[i], graphicsStr);
-    memArr[i][1023] = '\0'; // Null-terminate to ensure string is properly closed
+    // if (argc > 1) {
+    //     samples = atoi(argv[1]);
+    // }
 
-    // Update previous usage for next call
-    *prev_used_gb = virtual_used_gb;
-     
-}
-
-            
-void storeUserInfoThird(int userFD[2]) {
-    struct utmp *utmp_info;
-    char buffer[1024]=""; // Ensure this is large enough for the data
+    // if (argc > 2) {
+    //     tdelay = atoi(argv[2]);
+    // }
+    for(int ind = optind, i=0; ind < argc; ind++, i++) { // optind is global var.현재 처리 중인 인자의 위치(인덱스)현재 처리 중인 인자의 위치(인덱스)
+        switch(i){
+            case 0: 
+                samples = atoi(argv[ind]); 
+                break;
+            case 1:
+                tdelay = atoi(argv[ind]); 
+                break;
+        }
+    }
+    //intialize signal
     
-    setutent(); // Open the utmp file
+    unsigned long prevCpuUsage[7];
+    unsigned long currCpuUsage[7];
+    double virtual_used_gb=0.0;
+    double  prev_used_gb=0.0;
+    float cur_cpuUsage=0.00;
+    //float prevCpuUsage = 0.00;
+    char memArr[samples][1024];
+    char cpuArr[samples][200];
 
-    while ((utmp_info = getutent()) != NULL) { // Read until null
-        if (utmp_info->ut_type == USER_PROCESS) { // Check ut_type is normal process
-            // Clear the buffer for each user session
-            //memset(buffer, 0, sizeof(buffer));
+    
+    int i =0;
+    // int default_num = 3;
+    int CPU_GRAPH_START_LINE;
+    // int MEM_GRAPH_START_LINE;
+    int userLine_count;
+    // // char cpu_arr[samples][200];
+    // if(user && !system &&!sequential)
+    // {
+    //     GetInfoTop(samples,tdelay,sequential,i);
+    //     printf("-------------------------\n");
+    //     storeUserInfoThird();
+    //     printf("-------------------------\n");
+    //     printSystemInfoLast();
+    //     printf("-------------------------\n");
+    //     exit(1);   
 
-            // Check if ut_host has a value and format the string accordingly
-            if (strlen(utmp_info->ut_host) > 0) {
-                snprintf(buffer, sizeof(buffer), "%s\t%s\t(%s)\n", utmp_info->ut_user, utmp_info->ut_line, utmp_info->ut_host);
-            } 
-            // else {
-            //     snprintf(buffer, sizeof(buffer), "%s\t%s\n", utmp_info->ut_user, utmp_info->ut_line);
-            // }
-
-            // Write the formatted string to the pipe
-            
+    // }    
+    
+    int memFD[2],userFD[2],cpuPFD[2],cpuCFD[2],ucountFD[2];
+    // for (i = 0; i < samples; i++){
+        if(pipe(memFD)==-1 || pipe(userFD)==-1 || pipe(cpuPFD)==-1 || pipe(cpuCFD)==-1 || pipe(ucountFD)==-1){ //create/call pipe
+            fprintf(stderr,"pipe failed");
         }
-    }
-    ssize_t bytes_written = write(userFD[1], buffer, sizeof(char)*1024);
-            if (bytes_written == -1) {
-                perror("Failed to write user session info to pipe");
-                // Consider handling the error, e.g., by breaking out of the loop or other measures
-            }
-
-    endutent(); // Closes the internal stream of the utmp database
-    close(userFD[1]); // Close the write-end of the pipe
-}
-
-
-int printUserInfoThird(int userFD[2]) {
-    char buffer[1024]=""; // 데이터를 읽어올 버퍼
-    ssize_t bytesRead; // read 함수로부터 읽은 바이트 수를 저장
-    int userLine_count = 0; // Counter for user lines
-
-    printf("### Sessions/users ###\n");
-    // 파이프의 읽기 끝을 사용하여 데이터 읽기 시도
-    if((bytesRead = read(userFD[0], buffer, sizeof(char)*1024)) > 0) {
-        buffer[bytesRead] = '\0'; // 문자열의 끝을 나타내기 위해 널 종료자 추가
-        //printf("for loop overf?\n");
-        // printf("bytesread:%ld\n",bytesRead);
-        printf("%s\n", buffer); // 읽어온 데이터(사용자 정보) 출력
-        for (ssize_t i = 0; i < bytesRead; ++i) {
-            //printf("for loop?\n");
-            if (buffer[i] == '\n') {
-                userLine_count++;
-                //printf("userline =%d\n",userLine_count);
-            }
-        }
-        // printf("for loop overf fr??\n");
-        if (bytesRead == -1) {
-        // 읽기 중 오류 발생
-            perror("Failed to read from pipe");
+        // pid_t memPID,userPID,cpuPID; // for forking.
+        memPID=fork();
+        if(memPID==-1){
+            fprintf(stderr,"forkMemPID failed");
             exit(EXIT_FAILURE);
         }
-    }
-    // printf("while loop over fr??\n");
+        else if(memPID==0){// create child process to write the stat by using fcn from stat_function.c
+                //dup2(memFD[1],STDOUT_FILENO);
+                childProcessFunction();
+                 close(cpuPFD[0]);
+            close(cpuCFD[0]);
+            close(userFD[0]);
+            close(ucountFD[0]);
+            close(memFD[0]);
+                //dup2(memFD[1],STDOUT_FILENO);
+                 close(cpuPFD[1]);
+            close(cpuCFD[1]);
+            close(userFD[1]);
+            close(ucountFD[1]);
 
-    
-    close(userFD[0]); // 파이프의 읽기 끝 닫기
-    return userLine_count; // Return the count of user lines processed
-}
-
-
-
-void printCores(){
-    //fourth information.
-    int num_cpu = sysconf(_SC_NPROCESSORS_ONLN); //sysconf returns the number of processors in <unistd.h>
-    printf("Number of cores: %d\n",num_cpu);
-     //print num_cores
-}
-void storeCpuArr(int cpuFD[2]) {//fd[1]
-    //fifth information, print with fourth information.
-    unsigned long currCpuUsage[7];
-    FILE *fp = fopen("/proc/stat", "r");
-
-    if (!fp) {
-        perror("Error for opening /proc/stat");
-        exit(EXIT_FAILURE);
-    }
-
-    
-    if (fscanf(fp, "cpu %lu %lu %lu %lu %lu %lu %lu", 
-    &currCpuUsage[0], &currCpuUsage[1], &currCpuUsage[2], &currCpuUsage[3], &currCpuUsage[4], &currCpuUsage[5], &currCpuUsage[6]) != 7){ 
-        fprintf(stderr, "Error reat.ding CPU values\n");
-        fclose(fp);
-        exit(EXIT_FAILURE);
-    }
-    ssize_t bytes_written = write(cpuFD[1], &currCpuUsage, sizeof(currCpuUsage));
-    if (bytes_written == -1) {
-        perror("Error writing to pipe from storeCpuArr");
-        close(cpuFD[1]); // Close the pipe on error
-        exit(EXIT_FAILURE);
-    }
-
-    // Close the write end of the pipe to signal EOF to the reader
-    //close(cpuFD[1]);
-    fclose(fp); //mendatory
-}
-
-
-
-double calculateCpuUsage(unsigned long prevCpuUsage[7], unsigned long currCpuUsage[7]) {
-    // unsigned long prevCpuUsage[7];
-    // unsigned long currCpuUsage[7];
-    unsigned long idle_prev = prevCpuUsage[3] + prevCpuUsage[4]; // idle_prev = idle+iowait. i wrote clearly on notion.
-    unsigned long idle_cur = currCpuUsage[3] + currCpuUsage[4]; //similarly,
-
-    unsigned long total_prev = 0;
-    unsigned long total_cur = 0;
-    for (int i = 0; i < 7; ++i) {
-        total_prev += prevCpuUsage[i];
-        total_cur += currCpuUsage[i];
-    }
-
-    double total_diff = (double)(total_cur - total_prev);
-    double idle_diff = (double)(idle_cur - idle_prev);
-
-    return (total_diff - idle_diff) / total_diff * 100.0; // for persentage converted.// from the internet. need confirm.
-}
-void printCpuUsageAndGraphics(int cpuPFD[2], int cpuCFD[2], int sequential, int i,int graphics) {
-    unsigned long prevCpuUsage[7], currCpuUsage[7];
-    
-
-    read(cpuPFD[0], prevCpuUsage, sizeof(prevCpuUsage));
-    read(cpuCFD[0], currCpuUsage, sizeof(currCpuUsage));
-
-    double cur_cpuUsage = calculateCpuUsage(prevCpuUsage, currCpuUsage);
-    printf("Total CPU use: %.2f%%\n", cur_cpuUsage);
-
-    // if (graphics) {
-    //     // Use cur_cpuUsage to generate graphics
-    //     setCpuGraphics(sequential, cpuArr, &default_num, cur_cpuUsage, &prevCpuUsageUsage, i);
-    // }
-    
-}
-
-void setCpuGraphics(int sequential,char cpuArr[][200],int *default_num,float curCpuUsage, float *prevCpuUsage,int sampleIndex){
-    int baseBarCount = 3; // 기본 바 개수는 3으로 고정
-    int additionalBars; // CPU 사용량에 따라 추가되는 바의 개수를 결정할 변수
-
-    // 첫 번째 샘플인 경우, default_num을 초기화하고 기본 바를 설정합니다.
-    if (sampleIndex == 0) {
-        *default_num = baseBarCount; // 기본 바 개수로 초기화
-        additionalBars = (int)curCpuUsage; // 현재 CPU 사용량에 따른 추가 바 개수 계산
-    } else {
-        // 이전 CPU 사용량과 현재 CPU 사용량의 차이를 계산하여 추가 바 개수를 결정합니다.
-        additionalBars = (int)curCpuUsage - (int)(*prevCpuUsage);
-    }
-
-    // CPU 사용 정보를 담을 문자열을 초기화합니다.
-    char cpuUsageStr[200] = "         "; // 시작 공백을 포함하여 초기화
-    *default_num += additionalBars; // 추가 바 개수를 반영하여 전체 바 개수를 업데이트합니다.
-    for (int i = 0; i < *default_num; ++i) {
-        strcat(cpuUsageStr, "|"); // 각 바를 문자열에 추가합니다.
-    }
-
-    // CPU 사용량(%)을 문자열에 추가합니다.
-    char usagePercent[50];
-    // 완성된 문자열을 cpuArr에 저장합니다.
-    strcpy(cpuArr[sampleIndex], cpuUsageStr);
-
-    // sequential 모드에 따라 출력 방식을 조정합니다.
-    if (sequential) {
-        // sequential 모드가 활성화된 경우, 지금까지의 모든 CPU 사용 정보를 순차적으로 출력합니다.
-        for (int j = 0; j <= sampleIndex; j++) {
-            printf("%s\n", cpuArr[j]);
+                //sleep(tdelay);
+             storeMemArr(samples,memFD,tdelay);
+             
+                     close(memFD[1]);
+            exit(0);
         }
-    } else {
-        for(int k=0; k<=sampleIndex; k++){ //iterate through cpuArr upto the current iteration index i from main
-            printf("%s\n", cpuArr[k]); //prints the entire cpuArr upto and including the current iteration
+        //create child process for user info write.
+        userPID = fork();
+        if(userPID == -1){
+            fprintf(stderr,"fork userPID failed");
+            exit(EXIT_FAILURE);
         }
-    }
+        else if(userPID ==0){
+                            childProcessFunction();
 
-    // 현재 CPU 사용량을 이전 사용량으로 업데이트합니다.
-    *prevCpuUsage = curCpuUsage;
-}
+            //create child process to write user stat.
+             close(cpuCFD[0]); //generate other close fds.
+                //dup2(memFD[1],STDOUT_FILENO);
+                 close(cpuPFD[0]);
+            close(userFD[0]);
+            close(ucountFD[0]);
+            close(memFD[0]);
+            close(cpuCFD[1]); //generate other close fds.
+                //dup2(memFD[1],STDOUT_FILENO);
+                 close(cpuPFD[1]);
+            close(memFD[1]);
+            storeUserInfoThird(userFD,ucountFD);
+             close(userFD[1]);
+             close(ucountFD[1]);
+             
 
-void printSystemInfoLast(){
-    struct utsname sysinfo;
-    FILE *uptime_file;
-    double uptime_secs;
-    uptime_file = fopen("/proc/uptime","r"); //read file uptime.
-    fscanf(uptime_file, "%lf", &uptime_secs);
-    fclose(uptime_file);
-    
-    // Convert to days, hours, minutes, and seconds
-    int days = uptime_secs / (24 * 3600);
-    uptime_secs = uptime_secs - (days * 24 * 3600);
-    int hours = uptime_secs / 3600;
-    uptime_secs = uptime_secs - (hours * 3600);
-    int minutes = uptime_secs / 60;
-    int seconds = (int)uptime_secs % 60;
-    int days_to_hr = 24*days;
-    int Total_hr = days_to_hr + hours; 
-    if(uname(&sysinfo) == 0 && uptime_file != NULL){ // if 정보를 가져오는데 성공하면.
-        printf("### System Information ###\n");
-        printf("it goes here somehow\n");
-        printf("System Name =%s\n",sysinfo.sysname );
-        printf("Machine Name=%s\n", sysinfo.nodename);
-        printf("Version=%s\n", sysinfo.version);
-        printf("Release=%s\n", sysinfo.release);
-        printf("Architecture=%s\n", sysinfo.machine);
-        printf("System running since last reboot: %d days %02d:%02d:%02d (%02d:%02d:%02d)\n",
-         days, hours, minutes, seconds,Total_hr,minutes,seconds);
-        
-    }
-    else{
-        //printf("damn really ");
-        perror("Error opening /proc/uptime");
-        return;
-    }
-}
-    
-double calculateVirtUsed(){
-    struct sysinfo sys_info;
+            exit(0); //very important
 
-    sysinfo(&sys_info); //get the information of system.(such as memory usage)
-    double phys_total_gb = (float)sys_info.totalram/1024/1024/1024; 
-    double phys_free_gb = (float)sys_info.freeram/1024/1024/1024;
-    double phys_used_gb = (float)phys_total_gb-phys_free_gb;
-    double swap_total_gb = (float)sys_info.totalswap/1024/1024/1024;
-    double swap_free_gb = (float)sys_info.freeswap/1024/1024/1024;
+        }
+    
+        cpuPID = fork();
+        if(cpuPID ==-1){
+            fprintf(stderr,"fork for cpu failed");
+            exit(EXIT_FAILURE);
+        }
+        else if(cpuPID == 0){
+                            childProcessFunction();
 
-    double virtual_used_gb = phys_used_gb+(swap_total_gb-swap_free_gb);
-    
-    return virtual_used_gb; 
-}
-void reserve_space(int samples){
-    
-    for(int i=0;i<samples+1; i++){
-        printf("\n");
-    }
+            close(userFD[0]); //close others too.
+            close(cpuCFD[0]); //generate other close fds.
+                //dup2(memFD[1],STDOUT_FILENO);
+                 close(cpuPFD[0]);
+            close(ucountFD[0]);
+            close(memFD[0]);
+            
+            close(ucountFD[1]);
+            close(userFD[1]);
+            //dup2(cpuFD[1],STDOUT_FILENO);s
+            for(int i=0; i<samples; i++){
+                storeCpuArr(cpuPFD);
+                sleep(tdelay);
+                storeCpuArr(cpuCFD);
+            }
+            close(cpuCFD[1]); //generate other close fds.
+                //dup2(memFD[1],STDOUT_FILENO);
+                 close(cpuPFD[1]);
+                 
+            exit(0);
+            // calculateCpuUsage(prevCpuUsage, currCpuUsage); 
+            // printf(" total cpu use: %.2f%%\n", cur_cpuUsage); //this part will be on parent process. on A3. read from child.
+        //  setCpuGraphics(sequential,cpuArr,&d_num,cur_cpuUsage,&prevCpuUsageUsage,i); //if graphics option is given, display cpu graphics
+
+        }
+        else
+        {
+               // setup_signal_handling();
+
+            //parent process
+            
+            close(memFD[1]);
+            close(userFD[1]);
+            close(cpuPFD[1]);
+            close(cpuCFD[1]);
+            close(ucountFD[1]);
+            
+
+            struct sigaction act;
+            
+            act.sa_handler = signal_handler;
+            act.sa_flags = 0;
+            sigemptyset(&act.sa_mask);
+            sigaction(SIGINT, &act, NULL);
+            sigaction(SIGTSTP, &act, NULL);
+            sigaction(SIGSTOP,&act,NULL);
+            if (sigaction(SIGINT, &act, NULL) == -1) {
+                perror("sigaction error for SIGINT");
+                exit(EXIT_FAILURE);
+            }
+
+            if (sigaction(SIGTSTP, &act, NULL) == -1) {
+                perror("sigaction error for SIGTSTP");
+                exit(EXIT_FAILURE);
+            }
+            //signal(SIGINT,signal_handler);
+            
+            read(ucountFD[0],&userLine_count,sizeof(userLine_count));
+            // waitpid(memPID, NULL, 0);
+            // waitpid(userPID, NULL, 0);
+            // waitpid(cpuPID, NULL, 0);
+
+            if(sequential){
+                for (i = 0; i < samples; i++) { 
+                    
+                        //storeCpuArr(prevCpuUsage); 
+                        cpuArr[i][0] = '\0';
+                        sleep(tdelay); 
+                        GetInfoTop(samples,tdelay,sequential,i);
+                        if(!user || (user && system)){ 
+                            printf("---------------------------------------\n");
+                            //storeMemArr(memArr,i); 
+                            if(read(memFD[0], memArr[i], sizeof(memArr[i]))>0){
+                                if(graphics){
+                                    virtual_used_gb = calculateVirtUsed();
+
+                                    memoryGraphics(virtual_used_gb, &prev_used_gb, memArr, i);
+                                }
+                                fcnForPrintMemoryArr(sequential, samples, memArr, i, memFD);
+                            }
+                            if((user && system)||!system){ 
+                                printf("---------------------------------------\n");
+                                    printUserInfoThird(userFD);
+                                printf("---------------------------------------\n");
+                            }
+
+                            printCores();
+                            
+                            //storeCpuArr(currCpuUsage); 
+                            read(cpuPFD[0],&prevCpuUsage,sizeof(prevCpuUsage));
+                            read(cpuCFD[0],&currCpuUsage,sizeof(currCpuUsage));
+                            cur_cpuUsage= calculateCpuUsage(prevCpuUsage,currCpuUsage);
+                            printf("total cpu use:%.2f%%\n",cur_cpuUsage );
+                            if(graphics){
+                                
+                                setCpuGraphics(sequential,cpuArr,cur_cpuUsage,&prevCpuUsage,i); 
+                            }
+
+                        }
+                        else{ 
+                            printf("---------------------------------------\n");
+                            printUserInfoThird(userFD);
+                            printf("---------------------------------------\n");
+                        }
+                }
+            }
+            else
+            {
+                int systemStartGraphics=0;
+                int memStartCursor=0;
+                for (i = 0; i < samples; i++) { 
+                    
+                    sleep(tdelay);
+                    //read(ucountFD[0],&userLine_count,sizeof(userLine_count));
+                    GetInfoTop(samples,tdelay,sequential,i);
+                                     //   printf("ucount:%d\n",userLine_count);
+
+                    if(!user || (user && system)){ //base case
+                        //printf("this is non seq\n");
+                        printf("------------------------------------------------\n");  
+                        reserve_space(samples);
+                        if((user && system)||!system){ 
+                                //printf("not passing?");
+                                printf("---------------------------------------\n");
+                                   printUserInfoThird(userFD);
+                                printf("---------------------------------------\n");
+                        }
+                        printCores();
+                        read(cpuPFD[0],&prevCpuUsage,sizeof(prevCpuUsage));
+                        read(cpuCFD[0],&currCpuUsage,sizeof(currCpuUsage));
+                        cur_cpuUsage = calculateCpuUsage(prevCpuUsage,currCpuUsage);
+                        printf("total cpu use:%.2f%%\n",cur_cpuUsage );
+                        if(read(memFD[0], memArr[i], sizeof(memArr[i]))>0){
+                            if(graphics){
+                                virtual_used_gb = calculateVirtUsed();
+
+                                memoryGraphics(virtual_used_gb, &prev_used_gb, memArr, i);
+                            }
+                            
+                            if(system && !user){ // for system
+                                memStartCursor = samples+3;
+                                printf("\033[%dA",memStartCursor); //cursor up 
+                            }
+                            else if((system && user)){
+                                    memStartCursor = samples + userLine_count +4;
+                                printf("\033[%dA",memStartCursor); //cursor up 
+                            }
+                            else if(user && !(system && user) ){
+                                memStartCursor = samples + userLine_count +6;
+                                printf("\033[%dA",memStartCursor); //cursor up 
+                            }
+                            else{
+                                //default
+                               // printf("default pass here");
+                                memStartCursor = samples + userLine_count +4;
+                                printf("\033[%dA",memStartCursor); //cursor up 
+
+                            }
+                            fcnForPrintMemoryArr(sequential, samples, memArr, i, memFD);
+                            if(graphics)
+                            {
+                                systemStartGraphics =userLine_count;
+                                CPU_GRAPH_START_LINE= 4+userLine_count+samples-i;
+                                printf("\033[%d;1B", CPU_GRAPH_START_LINE); //cusor down
+                                setCpuGraphics(sequential,cpuArr,cur_cpuUsage,&prevCpuUsage,i); //if graphics option is given, display cpu graphics
+                            }
+                        }
+                        int systemStart = userLine_count+6;
+                        if(graphics){
+                            systemStart = systemStartGraphics;
+                        }else if(system &&!user){
+                                // printf("usercount:%d",userLine_count);
+                            systemStart = userLine_count +3;
+                            printf("\033[%dB",systemStart); //move cursor three line down
+                        }
+                        else{
+                            systemStart = userLine_count +6;
+                            printf("\033[%dB",systemStart); //move cursor three line down
+                        }
+                           
+
+                    }
+                    else{
+                            //printf("this is user flag\n");
+                            printf("---------------------------------------\n");
+                            printUserInfoThird(userFD);
+                            printf("---------------------------------------\n");
+                            int systemStart = userLine_count;
+                           // printf("usercount:%d",userLine_count);
+                            printf("\033[%dB",systemStart); //move cursor three line down.
+
+
+                    }       
+                }     
+            }
+            close(cpuPFD[0]);
+            close(cpuCFD[0]);
+            close(userFD[0]);
+            close(memFD[0]);
+            close(ucountFD[0]);
+            close(userFD[0]);
+            printf("------------------------------------\n");
+            printSystemInfoLast();
+            printf("----------------------------------\n");
+        }
+        return 0;
 }

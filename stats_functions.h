@@ -25,23 +25,9 @@
 #include <sys/utsname.h>
 #include <math.h>
 #include <getopt.h>
-// Structs for storing memory and CPU information might be declared if used in stats_functions.c
-typedef struct {
-    double phys_total_gb;
-    double phys_used_gb;
-    double virtual_total_gb;
-    double virtual_used_gb;
-} MemoryInfo;
+#include <ctype.h>
+#include <signal.h>
 
-typedef struct {
-    unsigned long user;
-    unsigned long nice;
-    unsigned long system;
-    unsigned long idle;
-    unsigned long iowait;
-    unsigned long irq;
-    unsigned long softirq;
-} CPUInfo;
 
 // Function prototypes
 void GetInfoTop(int samples, int tdelay, int sequential, int iteration);
@@ -54,8 +40,8 @@ void fcnForPrintMemoryArr(int sequential, int samples, char memArr[][1024], int 
 void memoryGraphics(double virtual_used_gb, double* prev_used_gb, char memArr[][1024], int iteration);
 
 
-void storeUserInfoThird(int userFD[2]);
-int printUserInfoThird(int userFD[2]);
+void storeUserInfoThird(int userFD[2],int ucountFD[2]);
+void printUserInfoThird(int userFD[2]);
 
 
 
@@ -65,7 +51,7 @@ void storeCpuArr(int cpuFD[2]);
 void printCpuUsageAndGraphics(int cpuPFD[2], int cpuCFD[2], int sequential, int i,int graphics);
 double calculateCpuUsage(unsigned long prevCpuUsage[7], unsigned long currCpuUsage[7]);
 // double calculateCpuUsage(int cpuPFD[2],int cpuCFD[2]);
-void setCpuGraphics(int sequential,char cpuArr[][200],int *default_num,float curCpuUsage, float *prevCpuUsage,int sampleIndex);
+void setCpuGraphics(int sequential,char cpuArr[][200],float curCpuUsage,float *prevCpuUsage,int sampleIndex);
 
 
 

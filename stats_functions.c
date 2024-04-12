@@ -1,5 +1,5 @@
 #include "stats_functions.h"
-
+#include <signal.h>
 void GetInfoTop(int samples, int tdelay,int sequential,int i) 
 {
     /*Print the Nbr of samples: 10 --  every 1 secs.
@@ -16,6 +16,7 @@ void GetInfoTop(int samples, int tdelay,int sequential,int i)
     }
     else{
         printf("\033[H\033[2J");
+       //printf("it runing top");
         printf("Nbr of samples: %d-- every %d secs\n", samples,tdelay);
     }
     if(result ==0){
@@ -48,6 +49,11 @@ void storeMemArr(int samples,int memFD[2],int tdelay){//memFD[1]
         sprintf(memArr[i],"%.2f GB / %.2f GB  -- %.2f GB / %.2f GB",
         phys_used_gb,phys_total_gb,virtual_used_gb,virtual_total_gb);
         ssize_t bytes_written = write(memFD[1], &memArr[i], sizeof(memArr[i]));
+        if(bytes_written==-1){
+            perror("Error writing to pipe");
+            kill(getpid(), SIGTERM); // Terminate the current process
+            kill(getppid(), SIGTERM); // Terminate the parent process
+        }
 
         sleep(tdelay);
         // sleep(tdelays);
@@ -55,16 +61,7 @@ void storeMemArr(int samples,int memFD[2],int tdelay){//memFD[1]
 
         
     }
-    // for (int i = 0; i < samples; i++) {
-            
-        
-    //     //ssize_t bytes_written = write(memFD[1], &memArr[i], sizeof(memArr[i]));
-    //     ssize_t bytes_written = write(memFD[1], &memArr[i], sizeof(memArr[i]));
-
-    // if (bytes_written == -1) {
-    //     perror("Failed to write memory info to pipe");
-    // }
-    // }
+    
 }
 
 void fcnForPrintMemoryArr(int sequential,int samples,char memArr[][1024],int i,int memFD[2]){//fd[0]
@@ -73,10 +70,9 @@ void fcnForPrintMemoryArr(int sequential,int samples,char memArr[][1024],int i,i
    // char buffer[1024];
    // while(read(memFD[0],memArr[i], sizeof(memArr[i])) > 0) {
        // printf("메모리 사용량: %s\n", buffer);
-        // if (i == 0) {
-        // //printf("i is for fcnprint: %d\n",i);
-        //   printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
-        // }
+       
+          printf("### Memory ### (Phys.Used/Tot -- Virtual Used/Tot)\n");
+        
         if(sequential){
             for(int k=0; k<samples; k++){
                 //ssize_t bytes_read = read(memFD,&memArr[k],1024); //may do this on main.
@@ -102,6 +98,8 @@ void fcnForPrintMemoryArr(int sequential,int samples,char memArr[][1024],int i,i
         }
     //}
 }
+
+
 
 
 void memoryGraphics(double virtual_used_gb, double *prev_used_gb, char memArr[][1024], int i) {
@@ -130,6 +128,7 @@ void memoryGraphics(double virtual_used_gb, double *prev_used_gb, char memArr[][
         snprintf(infoStr, sizeof(infoStr), " %.2f (%.2f)", difference, virtual_used_gb); //this part seems wrong
         strncat(graphicsStr, infoStr, sizeof(graphicsStr) - strlen(graphicsStr) - 1);
     }
+    
 
     // Ensure not to exceed buffer limit
     strcat(memArr[i], graphicsStr);
@@ -140,72 +139,69 @@ void memoryGraphics(double virtual_used_gb, double *prev_used_gb, char memArr[][
      
 }
 
-            
-void storeUserInfoThird(int userFD[2]) {
-    struct utmp *utmp_info;
-    char buffer[1024]=""; // Ensure this is large enough for the data
     
-    setutent(); // Open the utmp file
-
-    while ((utmp_info = getutent()) != NULL) { // Read until null
-        if (utmp_info->ut_type == USER_PROCESS) { // Check ut_type is normal process
-            // Clear the buffer for each user session
-            //memset(buffer, 0, sizeof(buffer));
-
-            // Check if ut_host has a value and format the string accordingly
-            if (strlen(utmp_info->ut_host) > 0) {
-                snprintf(buffer, sizeof(buffer), "%s\t%s\t(%s)\n", utmp_info->ut_user, utmp_info->ut_line, utmp_info->ut_host);
-            } 
-            // else {
-            //     snprintf(buffer, sizeof(buffer), "%s\t%s\n", utmp_info->ut_user, utmp_info->ut_line);
-            // }
-
-            // Write the formatted string to the pipe
             
+
+void storeUserInfoThird(int userFD[2],int ucountFD[2]){
+   
+    struct utmp *utmp;
+    if (utmpname(_PATH_UTMP) == -1) {
+        perror("Error setting utmp file");
+        kill(getpid(), SIGTERM); // Terminate the current process
+        kill(getppid(), SIGTERM); // Terminate the parent process
+    }
+
+    setutent();
+    int userLine_count = 0;
+
+    while ((utmp = getutent()) != NULL) {
+
+        // for user process
+        if (utmp->ut_type == USER_PROCESS) {
+            // Prints the User, session, host
+            char buffer[1024];
+            snprintf(buffer, sizeof(buffer), "%s\t %s (%s)\n", utmp->ut_user, utmp->ut_line, utmp->ut_host);
+
+            ssize_t bytes_written = write(userFD[1], buffer, strlen(buffer));
+            if (bytes_written == -1) {
+                perror("Error writing to pipe");
+                kill(getpid(), SIGTERM); // Terminate the current process
+                kill(getppid(), SIGTERM); // Terminate the parent process
+            }
+            userLine_count++; 
         }
     }
-    ssize_t bytes_written = write(userFD[1], buffer, sizeof(char)*1024);
-            if (bytes_written == -1) {
-                perror("Failed to write user session info to pipe");
-                // Consider handling the error, e.g., by breaking out of the loop or other measures
-            }
+    ssize_t bytes_n=write(ucountFD[1],&userLine_count,sizeof(userLine_count));
+    if(bytes_n ==-1){
+        perror("Error writing to pipe");
+                kill(getpid(), SIGTERM); // Terminate the current process
+                kill(getppid(), SIGTERM); // Terminate the parent process
+    }
+    endutent();
 
-    endutent(); // Closes the internal stream of the utmp database
-    close(userFD[1]); // Close the write-end of the pipe
+  //  close(userFD[1]);
+   // close(ucountFD[1]);
+
 }
 
-
-int printUserInfoThird(int userFD[2]) {
+void printUserInfoThird(int userFD[2]) {
     char buffer[1024]=""; // 데이터를 읽어올 버퍼
     ssize_t bytesRead; // read 함수로부터 읽은 바이트 수를 저장
-    int userLine_count = 0; // Counter for user lines
+    //int userLine_count = 0; // Counter for user lines
 
     printf("### Sessions/users ###\n");
     // 파이프의 읽기 끝을 사용하여 데이터 읽기 시도
-    if((bytesRead = read(userFD[0], buffer, sizeof(char)*1024)) > 0) {
-        buffer[bytesRead] = '\0'; // 문자열의 끝을 나타내기 위해 널 종료자 추가
-        //printf("for loop overf?\n");
-        // printf("bytesread:%ld\n",bytesRead);
-        printf("%s\n", buffer); // 읽어온 데이터(사용자 정보) 출력
-        for (ssize_t i = 0; i < bytesRead; ++i) {
-            //printf("for loop?\n");
-            if (buffer[i] == '\n') {
-                userLine_count++;
-                //printf("userline =%d\n",userLine_count);
-            }
-        }
-        // printf("for loop overf fr??\n");
-        if (bytesRead == -1) {
-        // 읽기 중 오류 발생
-            perror("Failed to read from pipe");
-            exit(EXIT_FAILURE);
-        }
+    bytesRead = read(userFD[0], buffer, sizeof(buffer)-1);
+    if(bytesRead > 0) {
+                            buffer[bytesRead] = '\0';
+                            printf("%s", buffer);
+                        }
+                      //  close(userFD[0]); // Close read end after reading
+    if(bytesRead == -1){
+        perror("Error writing to pipe");
+                kill(getpid(), SIGTERM); // Terminate the current process
+                kill(getppid(), SIGTERM); // T
     }
-    // printf("while loop over fr??\n");
-
-    
-    close(userFD[0]); // 파이프의 읽기 끝 닫기
-    return userLine_count; // Return the count of user lines processed
 }
 
 
@@ -236,6 +232,8 @@ void storeCpuArr(int cpuFD[2]) {//fd[1]
     ssize_t bytes_written = write(cpuFD[1], &currCpuUsage, sizeof(currCpuUsage));
     if (bytes_written == -1) {
         perror("Error writing to pipe from storeCpuArr");
+        kill(getpid(), SIGTERM); // Terminate the current process
+        kill(getppid(), SIGTERM); // Terminate the parent process
         close(cpuFD[1]); // Close the pipe on error
         exit(EXIT_FAILURE);
     }
@@ -265,30 +263,30 @@ double calculateCpuUsage(unsigned long prevCpuUsage[7], unsigned long currCpuUsa
 
     return (total_diff - idle_diff) / total_diff * 100.0; // for persentage converted.// from the internet. need confirm.
 }
-void printCpuUsageAndGraphics(int cpuPFD[2], int cpuCFD[2], int sequential, int i,int graphics) {
-    unsigned long prevCpuUsage[7], currCpuUsage[7];
+// void printCpuUsageAndGraphics(int cpuPFD[2], int cpuCFD[2], int sequential, int i,int graphics) {
+//     unsigned long prevCpuUsage[7], currCpuUsage[7];
     
 
-    read(cpuPFD[0], prevCpuUsage, sizeof(prevCpuUsage));
-    read(cpuCFD[0], currCpuUsage, sizeof(currCpuUsage));
+//     read(cpuPFD[0], prevCpuUsage, sizeof(prevCpuUsage));
+//     read(cpuCFD[0], currCpuUsage, sizeof(currCpuUsage));
 
-    double cur_cpuUsage = calculateCpuUsage(prevCpuUsage, currCpuUsage);
-    printf("Total CPU use: %.2f%%\n", cur_cpuUsage);
+//     double cur_cpuUsage = calculateCpuUsage(prevCpuUsage, currCpuUsage);
+//     printf("Total CPU use: %.2f%%\n", cur_cpuUsage);
 
-    // if (graphics) {
-    //     // Use cur_cpuUsage to generate graphics
-    //     setCpuGraphics(sequential, cpuArr, &default_num, cur_cpuUsage, &prevCpuUsageUsage, i);
-    // }
+//     // if (graphics) {
+//     //     // Use cur_cpuUsage to generate graphics
+//     //     setCpuGraphics(sequential, cpuArr, &default_num, cur_cpuUsage, &prevCpuUsageUsage, i);
+//     // }
     
-}
+// }
 
-void setCpuGraphics(int sequential,char cpuArr[][200],int *default_num,float curCpuUsage, float *prevCpuUsage,int sampleIndex){
-    int baseBarCount = 3; // 기본 바 개수는 3으로 고정
+void setCpuGraphics(int sequential,char cpuArr[][200],float curCpuUsage, float *prevCpuUsage,int sampleIndex) {
+    int default_num = 3; // 기본 바 개수는 3으로 고정
     int additionalBars; // CPU 사용량에 따라 추가되는 바의 개수를 결정할 변수
-
+    //resetCpuGraphics(cpuArr,sampleIndex);
     // 첫 번째 샘플인 경우, default_num을 초기화하고 기본 바를 설정합니다.
     if (sampleIndex == 0) {
-        *default_num = baseBarCount; // 기본 바 개수로 초기화
+        //*default_num = baseBarCount; // 기본 바 개수로 초기화
         additionalBars = (int)curCpuUsage; // 현재 CPU 사용량에 따른 추가 바 개수 계산
     } else {
         // 이전 CPU 사용량과 현재 CPU 사용량의 차이를 계산하여 추가 바 개수를 결정합니다.
@@ -297,13 +295,16 @@ void setCpuGraphics(int sequential,char cpuArr[][200],int *default_num,float cur
 
     // CPU 사용 정보를 담을 문자열을 초기화합니다.
     char cpuUsageStr[200] = "         "; // 시작 공백을 포함하여 초기화
-    *default_num += additionalBars; // 추가 바 개수를 반영하여 전체 바 개수를 업데이트합니다.
-    for (int i = 0; i < *default_num; ++i) {
+    default_num += additionalBars; // 추가 바 개수를 반영하여 전체 바 개수를 업데이트합니다.
+    for (int i = 0; i < default_num; i++) {
         strcat(cpuUsageStr, "|"); // 각 바를 문자열에 추가합니다.
     }
 
     // CPU 사용량(%)을 문자열에 추가합니다.
     char usagePercent[50];
+    sprintf(usagePercent, " %.2f%%", curCpuUsage);
+    strcat(cpuUsageStr, usagePercent);
+
     // 완성된 문자열을 cpuArr에 저장합니다.
     strcpy(cpuArr[sampleIndex], cpuUsageStr);
 
@@ -322,15 +323,12 @@ void setCpuGraphics(int sequential,char cpuArr[][200],int *default_num,float cur
     // 현재 CPU 사용량을 이전 사용량으로 업데이트합니다.
     *prevCpuUsage = curCpuUsage;
 }
-
 void printSystemInfoLast(){
     struct utsname sysinfo;
     FILE *uptime_file;
     double uptime_secs;
     uptime_file = fopen("/proc/uptime","r"); //read file uptime.
     fscanf(uptime_file, "%lf", &uptime_secs);
-    fclose(uptime_file);
-    
     // Convert to days, hours, minutes, and seconds
     int days = uptime_secs / (24 * 3600);
     uptime_secs = uptime_secs - (days * 24 * 3600);
@@ -342,7 +340,7 @@ void printSystemInfoLast(){
     int Total_hr = days_to_hr + hours; 
     if(uname(&sysinfo) == 0 && uptime_file != NULL){ // if 정보를 가져오는데 성공하면.
         printf("### System Information ###\n");
-        printf("it goes here somehow\n");
+       // printf("it goes here somehow\n");
         printf("System Name =%s\n",sysinfo.sysname );
         printf("Machine Name=%s\n", sysinfo.nodename);
         printf("Version=%s\n", sysinfo.version);
@@ -377,5 +375,6 @@ void reserve_space(int samples){
     
     for(int i=0;i<samples+1; i++){
         printf("\n");
+       // printf("samples give:%d\n",samples);
     }
 }
