@@ -1,8 +1,5 @@
-MySystemStats:
+ConcurrentSystemStats:(mySystemStats is main file):
 Overview
-Developed a concurrent system monitoring application in C, showcasing system programming by collecting CPU, memory, and user statistics from Linux system files.
-Utilized process forking and IPC with pipes for real-time data collection and aggregation across multiple processes, enhancing application efficiency.
-Enhanced user interaction and control through robust signal handling, specifically intercepting and responding to SIGINT and SIGTSTP for graceful program termination and continuation.
 
 
 MySystemStats is a dynamic, real-time system monitoring tool that captures and displays vital statistics like CPU usage, memory utilization, and user sessions. Utilizing concurrent programming techniques, the program efficiently collects system metrics through separate child processes, ensuring a seamless and interactive user experience. This approach not only enhances performance but also provides a modular structure for the monitoring tool.
